@@ -197,10 +197,14 @@ def pressKey(hexKeyCode):
 def releaseKey(hexKeyCode):
     extra = ctypes.c_ulong(0)
     ii_ = Input_I()
-    ii_.ki = KeyBdInput( 0, hexKeyCode, 0x0008 | 0x0002, 0, 
-ctypes.pointer(extra) )
+    ii_.ki = KeyBdInput( 0, hexKeyCode, 0x0008 | 0x0002, 0, ctypes.pointer(extra) )
     x = Input( ctypes.c_ulong(1), ii_ )
     ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
+
+
+def PreprocessForCaptcha(img):
+    img[(img[:,:,0]!=255) | (img[:,:,1]!=204) | (img[:,:,2]!=0)] = 0
+    return img
 
 
 import ctypes, sys
@@ -236,6 +240,7 @@ if is_admin():
     monster2 = cv2.imread('figure/monster6_2.png')
     noMP = cv2.imread('figure/noMP.png')
     lie_detector = cv2.imread('figure/lie_detector.png')
+    captcha = cv2.imread('figure/captcha.png')
 	
     X,Y,W,H = FindMonster.WindowBound()
     x_min,x_max = 250,W-250
@@ -255,7 +260,7 @@ if is_admin():
         bbh, bbw, _ = monster.shape
     
     while(1):
-        ##find monster
+        #find monster
         frame = np.array(FindMonster.screenshot_window())
         bb = FindMonster.multi_template_matching(frame, monster,shreshold)
         bb2 = FindMonster.multi_template_matching(frame, monster2,shreshold)
@@ -270,6 +275,13 @@ if is_admin():
         
         print(bb_me[0])
         print(len(bb_me[0]))
+        
+        #check Captcha
+        preprocessed_frame = PreprocessForCaptcha(frame)
+        bb_find_captcha = FindMonster.multi_template_matching(preprocessed_frame, captcha,0.35)
+        if len(bb_find_captcha[0])>=1:
+            print("find captcha")
+            break
         
         #fill MP
         bb_MP = FindMonster.multi_template_matching(frame, noMP,0.45)
