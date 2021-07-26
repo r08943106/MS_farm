@@ -214,6 +214,16 @@ import FindMonster
 import numpy as np
 import time
 from matplotlib import pyplot as plt
+import os
+from socket import *
+
+#alert setup
+host = "192.168.43.132" # set to IP address of target computer
+port = 13000
+addr = (host, port)
+UDPSock = socket(AF_INET, SOCK_DGRAM)
+
+#key stroke
 W = 0x11
 A = 0x1E
 S = 0x1F
@@ -281,6 +291,10 @@ if is_admin():
         bb_find_captcha = FindMonster.multi_template_matching(preprocessed_frame, captcha,0.35)
         if len(bb_find_captcha[0])>=1:
             print("find captcha")
+            data = "find captcha"
+            UDPSock.sendto(data.encode(), addr)
+            UDPSock.close()
+            os._exit(0)
             break
         
         #fill MP
