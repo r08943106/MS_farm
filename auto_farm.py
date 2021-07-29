@@ -202,7 +202,8 @@ def releaseKey(hexKeyCode):
     ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
 
 
-def PreprocessForCaptcha(img):
+def PreprocessForCaptcha(in_img):
+    img = in_img.copy()
     img[(img[:,:,0]!=255) | (img[:,:,1]!=204) | (img[:,:,2]!=0)] = 0
     return img
 
@@ -245,11 +246,10 @@ def is_admin():
         return False
 if is_admin():
     
-    me = cv2.imread('figure/me.png')
+    me = cv2.imread('figure/me2_0.6.png')
     monster = cv2.imread('figure/monster6.png')
     monster2 = cv2.imread('figure/monster6_2.png')
     noMP = cv2.imread('figure/noMP.png')
-    lie_detector = cv2.imread('figure/lie_detector.png')
     captcha = cv2.imread('figure/captcha.png')
 	
     X,Y,W,H = FindMonster.WindowBound()
@@ -277,14 +277,9 @@ if is_admin():
         bb = np.concatenate((bb,bb2),axis=1)
         if len(bb[0])==0:
             bb = [[20000],[20000]]
-        bb_me = FindMonster.multi_template_matching(frame, me,0.45)
-        print(bb)
+        bb_me = FindMonster.multi_template_matching(frame, me,0.6)
         clost_bb = FindMonster.closest_object(bb_me, bb)
-        print('close:', clost_bb)
-        print('me:' ,bb_me)
-        
-        print(bb_me[0])
-        print(len(bb_me[0]))
+
         
         #check Captcha
         preprocessed_frame = PreprocessForCaptcha(frame)
@@ -298,25 +293,20 @@ if is_admin():
             break
         
         #fill MP
-        bb_MP = FindMonster.multi_template_matching(frame, noMP,0.45)
-        if len(bb_MP[0])>=1 and time.time()-MP_time>5:
+        bb_MP = FindMonster.multi_template_matching(frame, noMP,0.35)
+        if len(bb_MP[0])>=1 and time.time()-MP_time>5 :
+            print("fill MP")
             MP_time = time.time()
             pressKey(A)
-            time.sleep(0.05)
+            time.sleep(0.)
             releaseKey(A)
 
-		#lie detector
-        bb_lie_detector = FindMonster.multi_template_matching(frame, lie_detector,0.45)
-        if len(bb_lie_detector[0])>=1:
-            for i in range(10):
-                print("lie detector")
-			
-            break 
 		
         if DEBUG:
             img = FindMonster.draw_box(frame, bb, bbh,bbw,(255, 0, 0))
             img = FindMonster.draw_box(img, bb_me, bbh,bbw,(0, 0, 255))
             img = FindMonster.draw_box(img, clost_bb, bbh,bbw,(0, 255, 0))
+            img = FindMonster.draw_box(img, bb_MP, bbh,bbw,(255, 255, 0))
             screen.set_data(img)
             plt.draw()
             plt.pause(0.5)
