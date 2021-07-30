@@ -267,7 +267,12 @@ class Bot:
                 pressKey(A)
                 time.sleep(random.uniform(0.1,0.3))
                 releaseKey(A)
-
+                
+                pressKey(LEFT)
+                pressKey(Lelt_Alt)
+                time.sleep(random.uniform(0.1,0.2))
+                releaseKey(Lelt_Alt)
+                releaseKey(LEFT)
             
             # if DEBUG:
                 # img = FindMonster.draw_box(frame, bb, bbh,bbw,(255, 0, 0))
