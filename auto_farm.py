@@ -214,11 +214,13 @@ class Bot:
         self.name = name
 
         #load picture
-        self.me = cv2.imread('figure/me_0.45.png')
+        self.me = cv2.imread('figure/me2_0.6.png')
         self.monster = cv2.imread('figure/monster6.png')
         self.monster2 = cv2.imread('figure/monster6_2.png')
         self.noMP = cv2.imread('figure/noMP.png')
-        self.captcha = cv2.imread('figure/click3.png')  
+        self.captcha = cv2.imread('figure/click3.png') 
+        self.captcha2 = cv2.imread('figure/captcha2.png')
+
         
         #set parameter
         X,Y,W,H = FindMonster.WindowBound()
@@ -234,14 +236,17 @@ class Bot:
         self.bb = FindMonster.multi_template_matching(self.frame, self.monster,self.shreshold)
         self.bb2 = FindMonster.multi_template_matching(self.frame, self.monster2,self.shreshold)
         self.bb = np.concatenate((self.bb,self.bb2),axis=1)
-        self.bb_me = FindMonster.multi_template_matching(self.frame, self.me,0.45)
+        self.bb_me = FindMonster.multi_template_matching(self.frame, self.me,0.7)
         self.preprocessed_frame = PreprocessForCaptcha(self.frame)
         self.bb_find_captcha = FindMonster.multi_template_matching(self.preprocessed_frame, self.captcha,0.35)
+        self.bb_find_captcha2 = FindMonster.multi_template_matching(self.frame, self.captcha2,0.5)
+        print(self.bb_find_captcha2)
         self.bb_MP = FindMonster.multi_template_matching(self.frame, self.noMP,0.35)
         
         if len(self.bb[0])==0: #if no monster set bb at infinity far away
             self.bb = [[20000],[20000]]
         
+
         self.clost_bb = FindMonster.closest_object(self.bb_me, self.bb)
  
 
@@ -252,7 +257,7 @@ class Bot:
             self.locate_object()
 
             #check Captcha
-            if len(self.bb_find_captcha[0])>=1:
+            if len(self.bb_find_captcha[0])>=1 or len(self.bb_find_captcha2[0])>=1:
                 print("find captcha")
                 data = "find captcha"
                 UDPSock.sendto(data.encode(), addr)
@@ -267,12 +272,16 @@ class Bot:
                 pressKey(A)
                 time.sleep(random.uniform(0.1,0.3))
                 releaseKey(A)
-                
+            
+            #jump without reason
+            if time.time()-self.MP_time>15:
+                self.MP_time = time.time()
                 pressKey(LEFT)
                 pressKey(Lelt_Alt)
                 time.sleep(random.uniform(0.1,0.2))
                 releaseKey(Lelt_Alt)
                 releaseKey(LEFT)
+                
             
             # if DEBUG:
                 # img = FindMonster.draw_box(frame, bb, bbh,bbw,(255, 0, 0))
