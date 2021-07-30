@@ -250,7 +250,7 @@ if is_admin():
     monster = cv2.imread('figure/monster6.png')
     monster2 = cv2.imread('figure/monster6_2.png')
     noMP = cv2.imread('figure/noMP.png')
-    captcha = cv2.imread('figure/captcha.png')
+    captcha = cv2.imread('figure/click3.png')
 	
     X,Y,W,H = FindMonster.WindowBound()
     x_min,x_max = 250,W-250
@@ -307,7 +307,7 @@ if is_admin():
             img = FindMonster.draw_box(img, bb_me, bbh,bbw,(0, 0, 255))
             img = FindMonster.draw_box(img, clost_bb, bbh,bbw,(0, 255, 0))
             img = FindMonster.draw_box(img, bb_MP, bbh,bbw,(255, 255, 0))
-            screen.set_data(img)
+            screen.set_data(preprocessed_frame)
             plt.draw()
             plt.pause(0.5)
     
