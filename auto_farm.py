@@ -2,6 +2,7 @@
 
 import ctypes
 import time
+import threading
 
 SendInput = ctypes.windll.user32.SendInput
 
@@ -208,6 +209,180 @@ def PreprocessForCaptcha(in_img):
     return img
 
 
+class Bot:
+    def __init__(self, name):
+        self.name = name
+
+        #load picture
+        self.me = cv2.imread('figure/me_0.45.png')
+        self.monster = cv2.imread('figure/monster6.png')
+        self.monster2 = cv2.imread('figure/monster6_2.png')
+        self.noMP = cv2.imread('figure/noMP.png')
+        self.captcha = cv2.imread('figure/click3.png')  
+        
+        #set parameter
+        X,Y,W,H = FindMonster.WindowBound()
+        self.x_min,self.x_max = 250,W-250
+        self.Direction=0
+        self.MP_time = time.time()
+        self.shreshold = 0.4#0.53
+        self.DEBUG = 0
+        
+    def locate_object(self):
+        print("update picture")
+        self.frame = np.array(FindMonster.screenshot_window())
+        self.bb = FindMonster.multi_template_matching(self.frame, self.monster,self.shreshold)
+        self.bb2 = FindMonster.multi_template_matching(self.frame, self.monster2,self.shreshold)
+        self.bb = np.concatenate((self.bb,self.bb2),axis=1)
+        self.bb_me = FindMonster.multi_template_matching(self.frame, self.me,0.45)
+        self.preprocessed_frame = PreprocessForCaptcha(self.frame)
+        self.bb_find_captcha = FindMonster.multi_template_matching(self.preprocessed_frame, self.captcha,0.35)
+        self.bb_MP = FindMonster.multi_template_matching(self.frame, self.noMP,0.35)
+        
+        if len(self.bb[0])==0: #if no monster set bb at infinity far away
+            self.bb = [[20000],[20000]]
+        
+        self.clost_bb = FindMonster.closest_object(self.bb_me, self.bb)
+ 
+
+ 
+    def farming(self):
+        while(1):
+
+            self.locate_object()
+
+            #check Captcha
+            if len(self.bb_find_captcha[0])>=1:
+                print("find captcha")
+                data = "find captcha"
+                UDPSock.sendto(data.encode(), addr)
+                UDPSock.close()
+                os._exit(0)
+                break
+            
+            #fill MP
+            if len(self.bb_MP[0])>=1 and time.time()-self.MP_time>5 :
+                print("fill MP")
+                self.MP_time = time.time()
+                pressKey(A)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(A)
+
+            
+            # if DEBUG:
+                # img = FindMonster.draw_box(frame, bb, bbh,bbw,(255, 0, 0))
+                # img = FindMonster.draw_box(img, bb_me, bbh,bbw,(0, 0, 255))
+                # img = FindMonster.draw_box(img, clost_bb, bbh,bbw,(0, 255, 0))
+                # img = FindMonster.draw_box(img, bb_MP, bbh,bbw,(255, 255, 0))
+                # screen.set_data(preprocessed_frame)
+                # plt.draw()
+                # plt.pause(0.5)
+        
+        
+            
+            if len(self.bb_me[0])==0:
+                print("lose myself")
+                self.Direction = random.randint(0,1)
+                if self.Direction==0:
+                    pressKey(LEFT)
+                    for i in range(5):
+                        pressKey(Z)
+                        time.sleep(random.uniform(0.1,0.3))
+                        releaseKey(Z)
+                    releaseKey(LEFT)
+                else:
+                    pressKey(RIGHT)
+                    for i in range(5):
+                        pressKey(Z)
+                        time.sleep(random.uniform(0.1,0.3))
+                        releaseKey(Z)
+                    releaseKey(RIGHT)
+                continue
+            
+            relative_pos_x = self.bb_me[1][0]-self.clost_bb[1][0]
+            relative_pos_y = self.bb_me[0][0]-self.clost_bb[0][0]
+            print('relative:',relative_pos_x,relative_pos_y)
+            
+
+            if (abs(relative_pos_y)>400):
+                print("no monster in range")
+                if self.bb_me[1][0]<self.x_min:
+                    self.Direction=1
+                elif self.bb_me[1][0]>self.x_max:
+                    self.Direction=0
+                    
+                    
+                if self.Direction==0:
+                    pressKey(LEFT)
+                    for i in range(5):
+                        pressKey(Z)
+                        time.sleep(random.uniform(0.1,0.2))
+                        releaseKey(Z)
+                    releaseKey(LEFT)
+                else:
+                    pressKey(RIGHT)
+                    for i in range(5):
+                        pressKey(Z)
+                        time.sleep(random.uniform(0.1,0.2))
+                        releaseKey(Z)
+                    releaseKey(RIGHT)
+            elif relative_pos_y>150 and self.bb_me[1][0]>self.x_min and self.bb_me[1][0]<self.x_max:
+                print('jump up')
+                pressKey(UP)
+                time.sleep(random.uniform(0.1,0.2))
+                pressKey(Left_Shift)
+                time.sleep(random.uniform(0.1,0.2))
+                releaseKey(Left_Shift)
+                time.sleep(random.uniform(0.1,0.2))
+                releaseKey(UP)
+                time.sleep(0.3)
+                pressKey(Left_Ctrl)
+                time.sleep(random.uniform(0.2,0.5))
+                releaseKey(Left_Ctrl)
+                print('here')
+            elif relative_pos_y<-100:
+                print('jump down')
+                pressKey(DOWN)
+                pressKey(Lelt_Alt)
+                time.sleep(random.uniform(0.1,0.2))
+                releaseKey(Lelt_Alt)
+                releaseKey(DOWN)
+            elif (relative_pos_x>200):
+                print('go left')
+                pressKey(LEFT)
+                for i in range(5):
+                    pressKey(Z)
+                    time.sleep(random.uniform(0.1,0.2))
+                    releaseKey(Z)
+                releaseKey(LEFT)
+            elif (relative_pos_x<-200):
+                print('go right')
+                pressKey(RIGHT)
+                for i in range(5):
+                    pressKey(Z)
+                    time.sleep(random.uniform(0.1,0.2))
+                    releaseKey(Z)
+                releaseKey(RIGHT)
+            elif (relative_pos_x>0):
+                print('attack left')
+                pressKey(LEFT)
+                time.sleep(0.05)
+                releaseKey(LEFT)
+                pressKey(Left_Ctrl)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(Left_Ctrl)
+            else:
+                print('attack left')
+                pressKey(RIGHT)
+                time.sleep(0.05)
+                releaseKey(RIGHT)
+                pressKey(Left_Ctrl)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(Left_Ctrl)
+            time.sleep(0.2)
+    
+
+
 import ctypes, sys
 import random
 import cv2
@@ -239,6 +414,8 @@ Lelt_Alt = 0x38
 Left_Ctrl = 0x1D
 Left_Shift = 0x2A
 
+
+
 def is_admin():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
@@ -246,178 +423,25 @@ def is_admin():
         return False
 if is_admin():
     
-    me = cv2.imread('figure/me2_0.6.png')
-    monster = cv2.imread('figure/monster6.png')
-    monster2 = cv2.imread('figure/monster6_2.png')
-    noMP = cv2.imread('figure/noMP.png')
-    captcha = cv2.imread('figure/click3.png')
-	
-    X,Y,W,H = FindMonster.WindowBound()
-    x_min,x_max = 250,W-250
-    Direction=0
-    MP_time = time.time()
-    shreshold = 0.4#0.53
-    DEBUG = 0
-    print(x_min,x_max)
     
     
-    if DEBUG:
-        plt.ion()
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        screen = ax.imshow(FindMonster.screenshot_window())
-        plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
-        bbh, bbw, _ = monster.shape
+    bot = Bot("first bot")
     
-    while(1):
-        #find monster
-        frame = np.array(FindMonster.screenshot_window())
-        bb = FindMonster.multi_template_matching(frame, monster,shreshold)
-        bb2 = FindMonster.multi_template_matching(frame, monster2,shreshold)
-        bb = np.concatenate((bb,bb2),axis=1)
-        if len(bb[0])==0:
-            bb = [[20000],[20000]]
-        bb_me = FindMonster.multi_template_matching(frame, me,0.6)
-        clost_bb = FindMonster.closest_object(bb_me, bb)
+    # if DEBUG:
+        # plt.ion()
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111)
+        # screen = ax.imshow(FindMonster.screenshot_window())
+        # plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
+        # bbh, bbw, _ = monster.shape
+    
+    bot.farming()
+    print("happy farming")
 
-        
-        #check Captcha
-        preprocessed_frame = PreprocessForCaptcha(frame)
-        bb_find_captcha = FindMonster.multi_template_matching(preprocessed_frame, captcha,0.35)
-        if len(bb_find_captcha[0])>=1:
-            print("find captcha")
-            data = "find captcha"
-            UDPSock.sendto(data.encode(), addr)
-            UDPSock.close()
-            os._exit(0)
-            break
-        
-        #fill MP
-        bb_MP = FindMonster.multi_template_matching(frame, noMP,0.35)
-        if len(bb_MP[0])>=1 and time.time()-MP_time>5 :
-            print("fill MP")
-            MP_time = time.time()
-            pressKey(A)
-            time.sleep(0.)
-            releaseKey(A)
-
-		
-        if DEBUG:
-            img = FindMonster.draw_box(frame, bb, bbh,bbw,(255, 0, 0))
-            img = FindMonster.draw_box(img, bb_me, bbh,bbw,(0, 0, 255))
-            img = FindMonster.draw_box(img, clost_bb, bbh,bbw,(0, 255, 0))
-            img = FindMonster.draw_box(img, bb_MP, bbh,bbw,(255, 255, 0))
-            screen.set_data(preprocessed_frame)
-            plt.draw()
-            plt.pause(0.5)
-    
-	
-        
-        if len(bb_me[0])==0:
-            print("lose myself")
-            
-            Direction = random.randint(0,1)
-            if Direction==0:
-                pressKey(LEFT)
-                for i in range(5):
-                    pressKey(Z)
-                    time.sleep(random.uniform(0.1,0.3))
-                    releaseKey(Z)
-                releaseKey(LEFT)
-            else:
-                pressKey(RIGHT)
-                for i in range(5):
-                    pressKey(Z)
-                    time.sleep(random.uniform(0.1,0.3))
-                    releaseKey(Z)
-                releaseKey(RIGHT)
-            continue
-        
-        relative_pos_x = bb_me[1][0]-clost_bb[1][0]
-        relative_pos_y = bb_me[0][0]-clost_bb[0][0]
-        print('relative:',relative_pos_x,relative_pos_y)
-        
-
-        if (abs(relative_pos_y)>400):
-            print("no monster in range")
-            if bb_me[1][0]<x_min:
-                Direction=1
-            elif bb_me[1][0]>x_max:
-                Direction=0
-                
-                
-            if Direction==0:
-                pressKey(LEFT)
-                for i in range(5):
-                    pressKey(Z)
-                    time.sleep(random.uniform(0.1,0.2))
-                    releaseKey(Z)
-                releaseKey(LEFT)
-            else:
-                pressKey(RIGHT)
-                for i in range(5):
-                    pressKey(Z)
-                    time.sleep(random.uniform(0.1,0.2))
-                    releaseKey(Z)
-                releaseKey(RIGHT)
-        elif relative_pos_y>150 and bb_me[1][0]>x_min and bb_me[1][0]<x_max:
-            print('jump up')
-            pressKey(UP)
-            time.sleep(random.uniform(0.1,0.2))
-            pressKey(Left_Shift)
-            time.sleep(random.uniform(0.1,0.2))
-            releaseKey(Left_Shift)
-            time.sleep(random.uniform(0.1,0.2))
-            releaseKey(UP)
-            time.sleep(0.3)
-            pressKey(Left_Ctrl)
-            time.sleep(random.uniform(0.2,0.5))
-            releaseKey(Left_Ctrl)
-            print('here')
-        elif relative_pos_y<-100:
-            print('jump down')
-            pressKey(DOWN)
-            pressKey(Lelt_Alt)
-            time.sleep(random.uniform(0.1,0.2))
-            releaseKey(Lelt_Alt)
-            releaseKey(DOWN)
-        elif (relative_pos_x>200):
-            print('go left')
-            pressKey(LEFT)
-            for i in range(5):
-                pressKey(Z)
-                time.sleep(random.uniform(0.1,0.2))
-                releaseKey(Z)
-            releaseKey(LEFT)
-        elif (relative_pos_x<-200):
-            print('go right')
-            pressKey(RIGHT)
-            for i in range(5):
-                pressKey(Z)
-                time.sleep(random.uniform(0.1,0.2))
-                releaseKey(Z)
-            releaseKey(RIGHT)
-        elif (relative_pos_x>0):
-            print('attack left')
-            pressKey(LEFT)
-            time.sleep(0.05)
-            releaseKey(LEFT)
-            pressKey(Left_Ctrl)
-            time.sleep(random.uniform(0.1,0.3))
-            releaseKey(Left_Ctrl)
-        else:
-            print('attack left')
-            pressKey(RIGHT)
-            time.sleep(0.05)
-            releaseKey(RIGHT)
-            pressKey(Left_Ctrl)
-            time.sleep(random.uniform(0.1,0.3))
-            releaseKey(Left_Ctrl)
-        time.sleep(0.2)
 else:
     # Re-run the program with admin rights
     ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
 
-
+    
 
 
