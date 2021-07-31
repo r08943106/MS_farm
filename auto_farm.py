@@ -212,22 +212,28 @@ def PreprocessForCaptcha(in_img):
 class Bot:
     def __init__(self, name):
         self.name = name
+        self.rune_exist = False
 
         #load picture
         self.me = cv2.imread('figure/me2_0.6.png')
-        self.monster = cv2.imread('figure/monster6.png')
-        self.monster2 = cv2.imread('figure/monster6_2.png')
+        self.monster = cv2.imread('figure/monster7.png')
+        self.monster2 = cv2.imread('figure/monster7_2.png')
         self.noMP = cv2.imread('figure/noMP.png')
         self.captcha = cv2.imread('figure/click3.png') 
         self.captcha2 = cv2.imread('figure/captcha2.png')
-
+        self.left_right = cv2.imread('figure/left_right.png')
+        self.rune = cv2.imread('figure/rune.png')
+        self.rune_left = cv2.cvtColor(cv2.imread('figure/left.png'), cv2.COLOR_BGR2RGB)
+        self.rune_right = cv2.cvtColor(cv2.imread('figure/right.png'), cv2.COLOR_BGR2RGB)
+        self.rune_up = cv2.cvtColor(cv2.imread('figure/up.png'), cv2.COLOR_BGR2RGB)
+        self.rune_down = cv2.cvtColor(cv2.imread('figure/down.png'), cv2.COLOR_BGR2RGB)
         
         #set parameter
         X,Y,W,H = FindMonster.WindowBound()
         self.x_min,self.x_max = 250,W-250
         self.Direction=0
         self.MP_time = time.time()
-        self.shreshold = 0.4#0.53
+        self.shreshold = 0.45#0.53
         self.DEBUG = 0
         
     def locate_object(self):
@@ -240,7 +246,10 @@ class Bot:
         self.preprocessed_frame = PreprocessForCaptcha(self.frame)
         self.bb_find_captcha = FindMonster.multi_template_matching(self.preprocessed_frame, self.captcha,0.35)
         self.bb_find_captcha2 = FindMonster.multi_template_matching(self.frame, self.captcha2,0.5)
-        print(self.bb_find_captcha2)
+        self.bb_left_right = FindMonster.multi_template_matching(self.frame, self.left_right,0.5)
+        self.bb_rune = FindMonster.multi_template_matching(self.frame, self.rune,0.45)
+        
+
         self.bb_MP = FindMonster.multi_template_matching(self.frame, self.noMP,0.35)
         
         if len(self.bb[0])==0: #if no monster set bb at infinity far away
@@ -249,12 +258,63 @@ class Bot:
 
         self.clost_bb = FindMonster.closest_object(self.bb_me, self.bb)
  
-
+    def locate_rune_arror(self):
+        self.frame = np.array(FindMonster.screenshot_window())
+        self.bb_rune_left = FindMonster.multi_template_matching(self.frame, self.rune_left,0.7)
+        self.bb_rune_right = FindMonster.multi_template_matching(self.frame, self.rune_right,0.7)
+        self.bb_rune_up = FindMonster.multi_template_matching(self.frame, self.rune_up,0.7)
+        self.bb_rune_down = FindMonster.multi_template_matching(self.frame, self.rune_down,0.7)
  
     def farming(self):
         while(1):
 
             self.locate_object()
+            
+            #find rune 
+            if len(self.bb_rune[0])>=1:
+                #print("find rune at ", self.bb_rune[1][0], self.bb_rune[0][0])
+                #print(self.bb_rune[1][0]-self.bb_me[1][0],self.bb_rune[0][0]-self.bb_me[0][0])
+                self.rune_exist = True
+            else:
+                self.rune_exist = False
+            
+            if self.rune_exist == True:
+                print("space")
+                pressKey(SPACE)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(SPACE)
+                time.sleep(0.1)
+                self.locate_rune_arror()
+                print(len(self.bb_rune_left[0]),len(self.bb_rune_right[0]))
+                while len(self.bb_rune_left[0])+len(self.bb_rune_right[0])+len(self.bb_rune_up[0])+len(self.bb_rune_down[0])>=1:
+                    print('try to solve rune')
+                    left_x = np.min(self.bb_rune_left[1],initial=30000)
+                    right_x = np.min(self.bb_rune_right[1],initial=30000)
+                    up_x = np.min(self.bb_rune_up[1],initial=30000)
+                    down_x = np.min(self.bb_rune_down[1],initial=30000)
+                    if (left_x<right_x) and (left_x<up_x) and (left_x<down_x):
+                        print("press left")
+                        pressKey(LEFT)
+                        time.sleep(0.5)
+                        releaseKey(LEFT)
+                    elif (right_x<up_x) and (right_x<down_x):
+                        print("press right")
+                        pressKey(RIGHT)
+                        time.sleep(0.5)
+                        releaseKey(RIGHT)
+                    elif (up_x<down_x):
+                        print("press up")
+                        pressKey(UP)
+                        time.sleep(0.5)
+                        releaseKey(UP)
+                    else:
+                        print("press down")
+                        pressKey(DOWN)
+                        time.sleep(0.5)
+                        releaseKey(DOWN) 
+                    time.sleep(1)
+                    self.locate_rune_arror()
+                
 
             #check Captcha
             if len(self.bb_find_captcha[0])>=1 or len(self.bb_find_captcha2[0])>=1:
@@ -264,9 +324,22 @@ class Bot:
                 UDPSock.close()
                 os._exit(0)
                 break
+                
+            #boss stone me (press left right repeatly)
+            if len(self.bb_left_right[0])>=1:
+                print("left right")
+                for i in range(30):
+                    pressKey(LEFT)
+                    time.sleep(0.1)
+                    releaseKey(LEFT)
+                    time.sleep(0.1)
+                    pressKey(RIGHT)
+                    time.sleep(0.1)
+                    releaseKey(RIGHT)
+                    time.sleep(0.1)
             
             #fill MP
-            if len(self.bb_MP[0])>=1 and time.time()-self.MP_time>5 :
+            if len(self.bb_MP[0])>=1 and time.time()-self.MP_time>1 :
                 print("fill MP")
                 self.MP_time = time.time()
                 pressKey(A)
@@ -427,7 +500,7 @@ ENTER = 0x1C
 Lelt_Alt = 0x38
 Left_Ctrl = 0x1D
 Left_Shift = 0x2A
-
+SPACE = 0x39
 
 
 def is_admin():

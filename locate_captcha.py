@@ -5,7 +5,8 @@ import pyautogui
 import time
 import win32gui
 
-me = cv.imread('figure/captcha2.png')
+me = cv.imread('figure/right.png')
+me=cv.cvtColor(me, cv.COLOR_BGR2RGB)
 monster = cv.imread('figure/test2.png')
 monster2 = cv.imread('figure/monster2_2.png')
 
@@ -61,7 +62,7 @@ screen = ax.imshow(pyautogui.screenshot())
 plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
 
 bbh, bbw, _ = me.shape
-shreshold = 0.5
+shreshold = 0.7
 while True:
     frame = np.array(pyautogui.screenshot())
     print(frame.shape)
