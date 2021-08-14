@@ -5,7 +5,7 @@ import pyautogui
 import time
 import win32gui
 
-me = cv.imread('figure/right.png')
+me = cv.imread('figure/monster18.png')
 me=cv.cvtColor(me, cv.COLOR_BGR2RGB)
 monster = cv.imread('figure/test2.png')
 monster2 = cv.imread('figure/monster2_2.png')
@@ -54,6 +54,11 @@ def closest_object(me, objects):
             min_value = distance
     return np.array(min_obj)
 
+def PreprocessForCaptcha(in_img):
+    img = in_img.copy()
+    img[(img[:,:,0]!=255) | (img[:,:,1]!=204) | (img[:,:,2]!=0)] = 0
+    return img
+
 plt.ion()
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -62,9 +67,10 @@ screen = ax.imshow(pyautogui.screenshot())
 plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
 
 bbh, bbw, _ = me.shape
-shreshold = 0.7
+shreshold = 0.5
 while True:
     frame = np.array(pyautogui.screenshot())
+    #frame = PreprocessForCaptcha(frame)
     print(frame.shape)
     bb_me = multi_template_matching(frame, me,shreshold)
     #bb_monster = multi_template_matching(frame, monster,shreshold)

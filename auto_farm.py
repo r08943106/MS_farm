@@ -215,13 +215,14 @@ class Bot:
         self.rune_exist = False
 
         #load picture
-        self.me = cv2.imread('figure/me2_0.6.png')
-        self.monster = cv2.imread('figure/monster7.png')
-        self.monster2 = cv2.imread('figure/monster7_2.png')
+        self.me = cv2.imread('figure/me3_0.7.png')
+        self.monster = cv2.cvtColor(cv2.imread('figure/monster16.png'), cv2.COLOR_BGR2RGB)
+        self.monster2 = cv2.cvtColor(cv2.imread('figure/monster16_2.png'), cv2.COLOR_BGR2RGB)
         self.noMP = cv2.imread('figure/noMP.png')
-        self.captcha = cv2.imread('figure/click3.png') 
-        self.captcha2 = cv2.imread('figure/captcha2.png')
-        self.left_right = cv2.imread('figure/left_right.png')
+        self.captcha = cv2.cvtColor(cv2.imread('figure/click3.png'), cv2.COLOR_BGR2RGB) 
+        self.captcha3 = cv2.cvtColor(cv2.imread('figure/click4.png'), cv2.COLOR_BGR2RGB)
+        self.captcha2 = cv2.cvtColor(cv2.imread('figure/captcha2.png'), cv2.COLOR_BGR2RGB)
+        self.left_right = cv2.cvtColor(cv2.imread('figure/left_right.png'), cv2.COLOR_BGR2RGB)
         self.rune = cv2.imread('figure/rune.png')
         self.rune_left = cv2.cvtColor(cv2.imread('figure/left.png'), cv2.COLOR_BGR2RGB)
         self.rune_right = cv2.cvtColor(cv2.imread('figure/right.png'), cv2.COLOR_BGR2RGB)
@@ -233,7 +234,8 @@ class Bot:
         self.x_min,self.x_max = 250,W-250
         self.Direction=0
         self.MP_time = time.time()
-        self.shreshold = 0.45#0.53
+        self.bless_time = 60000
+        self.shreshold = 0.5#0.53
         self.DEBUG = 0
         
     def locate_object(self):
@@ -244,10 +246,11 @@ class Bot:
         self.bb = np.concatenate((self.bb,self.bb2),axis=1)
         self.bb_me = FindMonster.multi_template_matching(self.frame, self.me,0.7)
         self.preprocessed_frame = PreprocessForCaptcha(self.frame)
-        self.bb_find_captcha = FindMonster.multi_template_matching(self.preprocessed_frame, self.captcha,0.35)
+        self.bb_find_captcha = FindMonster.multi_template_matching(self.preprocessed_frame, self.captcha,0.5)
+        self.bb_find_captcha3 = FindMonster.multi_template_matching(self.preprocessed_frame, self.captcha3,0.6)
         self.bb_find_captcha2 = FindMonster.multi_template_matching(self.frame, self.captcha2,0.5)
         self.bb_left_right = FindMonster.multi_template_matching(self.frame, self.left_right,0.5)
-        self.bb_rune = FindMonster.multi_template_matching(self.frame, self.rune,0.45)
+        self.bb_rune = FindMonster.multi_template_matching(self.frame, self.rune,0.6)
         
 
         self.bb_MP = FindMonster.multi_template_matching(self.frame, self.noMP,0.35)
@@ -269,9 +272,11 @@ class Bot:
         while(1):
 
             self.locate_object()
+            Time_attack = 3
             
             #find rune 
             if len(self.bb_rune[0])>=1:
+                print("find rune")
                 #print("find rune at ", self.bb_rune[1][0], self.bb_rune[0][0])
                 #print(self.bb_rune[1][0]-self.bb_me[1][0],self.bb_rune[0][0]-self.bb_me[0][0])
                 self.rune_exist = True
@@ -317,9 +322,14 @@ class Bot:
                 
 
             #check Captcha
-            if len(self.bb_find_captcha[0])>=1 or len(self.bb_find_captcha2[0])>=1:
+            if len(self.bb_find_captcha[0])>=1 or len(self.bb_find_captcha2[0])>=1 or len(self.bb_find_captcha3[0])>=1:
                 print("find captcha")
-                data = "find captcha"
+                if len(self.bb_find_captcha[0])>=1:
+                    data = "find captcha 1"
+                elif len(self.bb_find_captcha2[0])>=1:
+                    data = "find captcha 2"
+                else:
+                    data = "find captcha 3"
                 UDPSock.sendto(data.encode(), addr)
                 UDPSock.close()
                 os._exit(0)
@@ -327,16 +337,21 @@ class Bot:
                 
             #boss stone me (press left right repeatly)
             if len(self.bb_left_right[0])>=1:
+                data = "find stone"
+                UDPSock.sendto(data.encode(), addr)
                 print("left right")
-                for i in range(30):
+                for i in range(60):
                     pressKey(LEFT)
-                    time.sleep(0.1)
+                    time.sleep(0.05)
                     releaseKey(LEFT)
-                    time.sleep(0.1)
+                    time.sleep(0.05)
                     pressKey(RIGHT)
-                    time.sleep(0.1)
+                    time.sleep(0.05)
                     releaseKey(RIGHT)
-                    time.sleep(0.1)
+                    time.sleep(0.05)
+                    
+                print("find stone")
+
             
             #fill MP
             if len(self.bb_MP[0])>=1 and time.time()-self.MP_time>1 :
@@ -345,6 +360,21 @@ class Bot:
                 pressKey(A)
                 time.sleep(random.uniform(0.1,0.3))
                 releaseKey(A)
+                time.sleep(random.uniform(0.1,0.3))
+                pressKey(A)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(A)
+                time.sleep(random.uniform(0.1,0.3))
+                pressKey(A)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(A)
+            
+            if time.time()-self.bless_time>250:
+                pressKey(N)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(N)
+                self.bless_time = time.time()
+            
             
             #jump without reason
             if time.time()-self.MP_time>15:
@@ -384,6 +414,9 @@ class Bot:
                         time.sleep(random.uniform(0.1,0.3))
                         releaseKey(Z)
                     releaseKey(RIGHT)
+                pressKey(Left_Shift)
+                time.sleep(random.uniform(0.1,0.3))
+                releaseKey(Left_Shift)
                 continue
             
             relative_pos_x = self.bb_me[1][0]-self.clost_bb[1][0]
@@ -437,35 +470,80 @@ class Bot:
             elif (relative_pos_x>200):
                 print('go left')
                 pressKey(LEFT)
+                #pressKey(UP)
                 for i in range(5):
                     pressKey(Z)
                     time.sleep(random.uniform(0.1,0.2))
                     releaseKey(Z)
+                #releaseKey(UP)
                 releaseKey(LEFT)
+                time.sleep(0.1)
+                pressKey(Left_Shift)
+                time.sleep(0.05)
+                releaseKey(Left_Shift)
+                time.sleep(0.5)
+                
+                for i in range(Time_attack):
+                    pressKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    releaseKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    pressKey(A)
+                    time.sleep(random.uniform(0.1,0.3))
+                    releaseKey(A)
             elif (relative_pos_x<-200):
                 print('go right')
                 pressKey(RIGHT)
+                #pressKey(UP)
                 for i in range(5):
                     pressKey(Z)
                     time.sleep(random.uniform(0.1,0.2))
                     releaseKey(Z)
+                #releaseKey(UP)
                 releaseKey(RIGHT)
+                time.sleep(0.1)
+                pressKey(Left_Shift)
+                time.sleep(0.05)
+                releaseKey(Left_Shift)
+                time.sleep(0.5)
+                
+                for i in range(Time_attack):
+                    pressKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    releaseKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    pressKey(A)
+                    time.sleep(random.uniform(0.1,0.3))
+                    releaseKey(A)
             elif (relative_pos_x>0):
                 print('attack left')
                 pressKey(LEFT)
                 time.sleep(0.05)
                 releaseKey(LEFT)
-                pressKey(Left_Ctrl)
-                time.sleep(random.uniform(0.1,0.3))
-                releaseKey(Left_Ctrl)
-            else:
-                print('attack left')
-                pressKey(RIGHT)
                 time.sleep(0.05)
+                for i in range(Time_attack):
+                    pressKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    releaseKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    pressKey(A)
+                    time.sleep(random.uniform(0.1,0.3))
+                    releaseKey(A)
+            else:
+                print('attack right')
+                pressKey(RIGHT)
+                time.sleep(0.1)
                 releaseKey(RIGHT)
-                pressKey(Left_Ctrl)
-                time.sleep(random.uniform(0.1,0.3))
-                releaseKey(Left_Ctrl)
+                time.sleep(0.1)
+                for i in range(Time_attack):
+                    pressKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    releaseKey(Left_Ctrl)
+                    time.sleep(0.1)
+                    pressKey(A)
+                    time.sleep(random.uniform(0.1,0.3))
+                    releaseKey(A)
+   
             time.sleep(0.2)
     
 
@@ -491,6 +569,7 @@ W = 0x11
 A = 0x1E
 S = 0x1F
 D = 0x20
+N = 0x31
 Z = 0x2C
 UP = 0xC8
 DOWN = 0xD0
@@ -501,6 +580,7 @@ Lelt_Alt = 0x38
 Left_Ctrl = 0x1D
 Left_Shift = 0x2A
 SPACE = 0x39
+
 
 
 def is_admin():
